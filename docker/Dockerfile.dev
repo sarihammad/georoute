@@ -1,0 +1,27 @@
+FROM ubuntu:22.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        git \
+        curl \
+        ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY . /app
+
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build build --target georoute_server && \
+    cmake --build build --target georoute_cli && \
+    cmake --build build --target georoute_bench
+
+EXPOSE 8080
+
+CMD ["./build/georoute_server", "--graph", "data/sample_graph.json"]
+
+

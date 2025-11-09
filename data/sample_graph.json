@@ -1,0 +1,8 @@
+{
+  "nodes": 4,
+  "edges": [
+    { "from": 0, "to": 1, "base_travel_time": 10.0 },
+    { "from": 1, "to": 2, "base_travel_time": 5.0 },
+    { "from": 2, "to": 3, "base_travel_time": 7.5 }
+  ]
+}
