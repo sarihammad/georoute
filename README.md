@@ -1,8 +1,8 @@
 # GeoRoute
 
-**Low-latency geo routing + real-time congestion updates in modern C++.**
+**Low-latency geo routing & real-time congestion updates in modern C++.**
 
-GeoRoute is a production-grade demonstration of building low-latency geo systems in modern C++ — real-time congestion updates, fast route queries, and measurable performance.
+GeoRoute is a demonstration of building low-latency geo systems in modern C++. Features real-time congestion updates, fast route queries, and measurable performance.
 
 ## 60-Second Demo
 
