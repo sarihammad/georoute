@@ -255,7 +255,3 @@ ctest
 - [ ] Add request tracing and structured logging
 - [ ] Support weighted multi-criteria routing (time + cost)
 - [ ] Add integration tests with real-world graph datasets
-
-## License
-
-[Add your license here]
