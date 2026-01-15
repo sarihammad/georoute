@@ -18,7 +18,8 @@ COPY . /app
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build build --target georoute_server && \
     cmake --build build --target georoute_cli && \
-    cmake --build build --target georoute_bench
+    cmake --build build --target georoute_bench && \
+    cmake --build build --target georoute_bench_main
 
 EXPOSE 8080
 

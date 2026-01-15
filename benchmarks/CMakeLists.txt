@@ -7,3 +7,12 @@ target_link_libraries(georoute_bench
         georoute_lib
 )
 
+add_executable(georoute_bench_main
+    bench_main.cpp
+)
+
+target_link_libraries(georoute_bench_main
+    PRIVATE
+        georoute_lib
+)
+

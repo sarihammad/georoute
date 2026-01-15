@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  georoute:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../data:/app/data:ro
+    command: ["./build/georoute_server", "--graph", "data/sample_graph.json", "--host", "0.0.0.0", "--port", "8080"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
