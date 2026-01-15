@@ -1,29 +1,19 @@
 #include <cstdint>
-#include <fstream>
 #include <iostream>
 #include <optional>
 #include <string>
 #include <string_view>
 
-#include <nlohmann/json.hpp>
-
-#include "georoute/http_server.hpp"
-#include "georoute/router.hpp"
+#include "georoute/app.hpp"
 
 namespace {
-
-struct ServerConfig {
-    std::string graph_path{};
-    std::string host{"0.0.0.0"};
-    std::uint16_t port{8080};
-};
 
 void print_usage(const char* binary) {
     std::cout << "Usage: " << binary << " --graph <path> [--host <host>] [--port <port>]" << '\n';
 }
 
-std::optional<ServerConfig> parse_arguments(int argc, char** argv) {
-    ServerConfig config;
+std::optional<georoute::AppConfig> parse_arguments(int argc, char** argv) {
+    georoute::AppConfig config;
 
     for (int i = 1; i < argc; ++i) {
         const std::string_view arg{argv[i]};
@@ -54,24 +44,11 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::ifstream input{config->graph_path};
-    if (!input) {
-        std::cerr << "Failed to open graph file: " << config->graph_path << '\n';
+    georoute::GeoRouteApp app{*config};
+    if (!app.initialize()) {
         return 1;
     }
 
-    try {
-        nlohmann::json data;
-        input >> data;
-
-        auto router = georoute::Router::from_json(data);
-
-        std::cout << "Starting GeoRoute server on " << config->host << ':' << config->port << '\n';
-        georoute::HttpServerOptions options{config->host, config->port};
-        return georoute::run_http_server(router, options);
-    } catch (const std::exception& ex) {
-        std::cerr << "Failed to initialize router: " << ex.what() << '\n';
-        return 1;
-    }
+    return app.run();
 }
 

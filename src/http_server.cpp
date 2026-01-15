@@ -6,7 +6,7 @@
 #include <httplib.h>
 #include <nlohmann/json.hpp>
 
-#include "georoute/router.hpp"
+#include "georoute/engine.hpp"
 
 namespace georoute {
 
@@ -46,15 +46,56 @@ std::optional<nlohmann::json> parse_json(const httplib::Request& req) {
 
 }  // namespace
 
-int run_http_server(Router& router, const HttpServerOptions& options) {
+int run_http_server(GeoRouteEngine& engine, const HttpServerOptions& options) {
     httplib::Server server;
+
+    server.Get("/health", [](const httplib::Request&, httplib::Response& res) {
+        const auto payload = make_health_response();
+        res.set_content(payload.dump(), "application/json");
+    });
 
     server.Get("/api/v1/health", [](const httplib::Request&, httplib::Response& res) {
         const auto payload = make_health_response();
         res.set_content(payload.dump(), "application/json");
     });
 
-    wrap_endpoint(server, "/api/v1/route", [&router](const httplib::Request& req, httplib::Response& res) {
+    server.Get("/route", [&engine](const httplib::Request& req, httplib::Response& res) {
+        const auto src_param = req.get_param_value("src");
+        const auto dst_param = req.get_param_value("dst");
+        
+        if (src_param.empty() || dst_param.empty()) {
+            res.status = 400;
+            res.set_content(make_error_response("missing 'src' or 'dst' query parameters").dump(), "application/json");
+            return;
+        }
+        
+        try {
+            const auto source = static_cast<node_id>(std::stoul(src_param));
+            const auto target = static_cast<node_id>(std::stoul(dst_param));
+            
+            const auto response = engine.route(source, target);
+            
+            nlohmann::json json_response{
+                {"src", source},
+                {"dst", target},
+                {"distance", response.result.total_travel_time},
+                {"eta_ms", static_cast<int>(response.result.total_travel_time * 1000)},
+                {"path", response.result.nodes},
+                {"reachable", response.result.reachable},
+                {"stats", {
+                    {"compute_us", response.compute_time_us},
+                    {"expanded_nodes", response.expanded_nodes}
+                }}
+            };
+            
+            res.set_content(json_response.dump(), "application/json");
+        } catch (const std::exception& ex) {
+            res.status = 400;
+            res.set_content(make_error_response(ex.what()).dump(), "application/json");
+        }
+    });
+
+    wrap_endpoint(server, "/api/v1/route", [&engine](const httplib::Request& req, httplib::Response& res) {
         const auto payload = parse_json(req);
         if (!payload) {
             res.status = 400;
@@ -70,17 +111,24 @@ int run_http_server(Router& router, const HttpServerOptions& options) {
         const auto source = payload->at("source").get<node_id>();
         const auto target = payload->at("target").get<node_id>();
 
-        const auto result = router.compute_route(source, target);
-        nlohmann::json response{
-            {"reachable", result.reachable},
-            {"total_travel_time", result.total_travel_time},
-            {"nodes", result.nodes},
+        const auto response = engine.route(source, target);
+        nlohmann::json json_response{
+            {"src", source},
+            {"dst", target},
+            {"distance", response.result.total_travel_time},
+            {"eta_ms", static_cast<int>(response.result.total_travel_time * 1000)},
+            {"path", response.result.nodes},
+            {"reachable", response.result.reachable},
+            {"stats", {
+                {"compute_us", response.compute_time_us},
+                {"expanded_nodes", response.expanded_nodes}
+            }}
         };
 
-        res.set_content(response.dump(), "application/json");
+        res.set_content(json_response.dump(), "application/json");
     });
 
-    wrap_endpoint(server, "/api/v1/congestion/update", [&router](const httplib::Request& req, httplib::Response& res) {
+    wrap_endpoint(server, "/api/v1/congestion/update", [&engine](const httplib::Request& req, httplib::Response& res) {
         const auto payload = parse_json(req);
         if (!payload) {
             res.status = 400;
@@ -98,9 +146,21 @@ int run_http_server(Router& router, const HttpServerOptions& options) {
         const auto edge_start = payload->at("edge_start").get<std::size_t>();
         const auto edge_end = payload->at("edge_end").get<std::size_t>();
         const auto factor = payload->at("factor").get<float>();
-        router.apply_congestion_update(edge_start, edge_end, factor);
+        engine.apply_congestion_update(edge_start, edge_end, factor);
 
         res.set_content(nlohmann::json{{"status", "ok"}}.dump(), "application/json");
+    });
+
+    server.Get("/metrics", [&engine](const httplib::Request&, httplib::Response& res) {
+        const auto stats = engine.get_stats();
+        nlohmann::json metrics{
+            {"queries_total", stats.total_queries},
+            {"updates_total", stats.total_updates},
+            {"compute_time_total_us", stats.total_compute_time_us},
+            {"compute_time_max_us", stats.max_compute_time_us},
+            {"compute_time_avg_us", stats.total_queries > 0 ? stats.total_compute_time_us / stats.total_queries : 0.0}
+        };
+        res.set_content(metrics.dump(2), "application/json");
     });
 
     const auto success = server.listen(options.host.c_str(), static_cast<int>(options.port));
