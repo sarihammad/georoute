@@ -3,6 +3,9 @@ add_executable(georoute_tests
     test_dijkstra.cpp
     test_segment_tree.cpp
     test_router.cpp
+    test_engine.cpp
+    test_path_validity.cpp
+    test_congestion_deterministic.cpp
 )
 
 target_link_libraries(georoute_tests
