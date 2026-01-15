@@ -21,7 +21,7 @@ public:
     ~Router();
 
     void apply_congestion_update(std::size_t edge_start, std::size_t edge_end, float factor);
-    [[nodiscard]] RouteResult compute_route(node_id source, node_id target) const;
+    [[nodiscard]] RouteComputation compute_route(node_id source, node_id target) const;
 
     static Router from_json(const nlohmann::json& config);
 

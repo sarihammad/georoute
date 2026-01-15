@@ -24,7 +24,7 @@ void Router::apply_congestion_update(std::size_t edge_start, std::size_t edge_en
     congestion_tree_.range_multiply(edge_start, edge_end, factor);
 }
 
-RouteResult Router::compute_route(node_id source, node_id target) const {
+RouteComputation Router::compute_route(node_id source, node_id target) const {
     std::shared_lock lock{mutex_};
     DijkstraRouter router{graph_, congestion_tree_};
     return router.shortest_path(source, target);

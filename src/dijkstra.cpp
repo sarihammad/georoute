@@ -11,25 +11,34 @@ namespace georoute {
 DijkstraRouter::DijkstraRouter(const Graph& graph, const SegmentTree& congestion_tree)
     : graph_(graph), congestion_tree_(congestion_tree) {}
 
-RouteResult DijkstraRouter::shortest_path(node_id source, node_id target) const {
+RouteComputation DijkstraRouter::shortest_path(node_id source, node_id target) const {
     const auto node_count = graph_.node_count();
     if (source >= node_count || target >= node_count) {
         throw std::out_of_range{"DijkstraRouter::shortest_path node id out of range"};
     }
 
+    RouteStats stats{};
+    RouteResult result{};
+
     if (source == target) {
-        return RouteResult{{source}, 0.0F, true};
+        result.nodes = {source};
+        result.total_travel_time = 0.0F;
+        result.reachable = true;
+        stats.expanded_nodes = 1;
+        stats.visited_nodes = 1;
+        return RouteComputation{result, stats};
     }
 
-    constexpr float inf = std::numeric_limits<float>::infinity();
-    std::vector<float> distances(node_count, inf);
+    constexpr double inf = std::numeric_limits<double>::infinity();
+    std::vector<double> distances(node_count, inf);
     std::vector<node_id> predecessors(node_count, std::numeric_limits<node_id>::max());
+    std::vector<bool> visited(node_count, false);
 
-    distances[source] = 0.0F;
+    distances[source] = 0.0;
 
     struct QueueEntry {
         node_id node;
-        float cost;
+        double cost;
     };
     struct CompareEntry {
         bool operator()(const QueueEntry& lhs, const QueueEntry& rhs) const noexcept {
@@ -38,14 +47,24 @@ RouteResult DijkstraRouter::shortest_path(node_id source, node_id target) const 
     };
 
     std::priority_queue<QueueEntry, std::vector<QueueEntry>, CompareEntry> queue;
-    queue.push(QueueEntry{source, 0.0F});
+    queue.push(QueueEntry{source, 0.0});
 
     while (!queue.empty()) {
         const auto current = queue.top();
         queue.pop();
 
+        // Skip stale entries
         if (current.cost > distances[current.node]) {
             continue;
+        }
+
+        // Count expanded nodes (non-stale queue pops)
+        stats.expanded_nodes++;
+
+        // Mark as visited
+        if (!visited[current.node]) {
+            visited[current.node] = true;
+            stats.visited_nodes++;
         }
 
         if (current.node == target) {
@@ -54,12 +73,13 @@ RouteResult DijkstraRouter::shortest_path(node_id source, node_id target) const 
 
         for (const auto& edge : graph_.neighbors(current.node)) {
             const float congestion_factor = congestion_tree_.point_query(edge.id);
-            const float edge_cost = edge.base_travel_time * congestion_factor;
-            const float new_cost = current.cost + edge_cost;
+            const double edge_cost = static_cast<double>(edge.base_travel_time) * static_cast<double>(congestion_factor);
+            const double new_cost = current.cost + edge_cost;
 
-            if (new_cost + std::numeric_limits<float>::epsilon() < distances[edge.to]) {
+            if (new_cost < distances[edge.to]) {
                 distances[edge.to] = new_cost;
                 predecessors[edge.to] = current.node;
+                stats.relaxed_edges++;
 
                 queue.push(QueueEntry{edge.to, new_cost});
             }
@@ -67,7 +87,7 @@ RouteResult DijkstraRouter::shortest_path(node_id source, node_id target) const 
     }
 
     if (distances[target] == inf) {
-        return RouteResult{};
+        return RouteComputation{result, stats};
     }
 
     std::vector<node_id> path;
@@ -79,16 +99,15 @@ RouteResult DijkstraRouter::shortest_path(node_id source, node_id target) const 
     }
 
     if (path.empty() || path.back() != source) {
-        return RouteResult{};
+        return RouteComputation{result, stats};
     }
 
     std::reverse(path.begin(), path.end());
 
-    RouteResult result;
     result.nodes = std::move(path);
-    result.total_travel_time = distances[target];
+    result.total_travel_time = static_cast<float>(distances[target]);
     result.reachable = true;
-    return result;
+    return RouteComputation{result, stats};
 }
 
 }  // namespace georoute

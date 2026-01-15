@@ -155,9 +155,9 @@ int main(int argc, char** argv) {
                         std::cout << "Applied congestion factor " << operation.factor << " to edges ["
                                   << operation.edge_start << ", " << operation.edge_end << "]\n";
                     } else if constexpr (std::is_same_v<T, RouteQuery>) {
-                        const auto result = router.compute_route(operation.source, operation.target);
+                        const auto computation = router.compute_route(operation.source, operation.target);
                         std::cout << "Route from " << operation.source << " to " << operation.target << ":\n";
-                        print_route_result(result);
+                        print_route_result(computation.result);
                     }
                 },
                 op);

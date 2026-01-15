@@ -13,7 +13,7 @@ class DijkstraRouter {
 public:
     DijkstraRouter(const Graph& graph, const SegmentTree& congestion_tree);
 
-    [[nodiscard]] RouteResult shortest_path(node_id source, node_id target) const;
+    [[nodiscard]] RouteComputation shortest_path(node_id source, node_id target) const;
 
 private:
     const Graph& graph_;

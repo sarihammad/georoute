@@ -28,16 +28,18 @@ TEST_CASE("Router computes routes with congestion applied", "[router]") {
     auto router = build_sample_router();
 
     const auto baseline = router.compute_route(0, 3);
-    REQUIRE(baseline.reachable);
-    REQUIRE(baseline.total_travel_time == Catch::Approx(2.0F));
-    REQUIRE(baseline.nodes == std::vector<georoute::node_id>{0, 1, 3});
+    REQUIRE(baseline.result.reachable);
+    REQUIRE(baseline.result.total_travel_time == Catch::Approx(2.0F));
+    REQUIRE(baseline.result.nodes == std::vector<georoute::node_id>{0, 1, 3});
+    REQUIRE(baseline.stats.expanded_nodes > 0);
 
     router.apply_congestion_update(0, 1, 2.5F);
 
     const auto congested = router.compute_route(0, 3);
-    REQUIRE(congested.reachable);
-    REQUIRE(congested.total_travel_time == Catch::Approx(3.0F));
-    REQUIRE(congested.nodes == std::vector<georoute::node_id>{0, 2, 3});
+    REQUIRE(congested.result.reachable);
+    REQUIRE(congested.result.total_travel_time == Catch::Approx(3.0F));
+    REQUIRE(congested.result.nodes == std::vector<georoute::node_id>{0, 2, 3});
+    REQUIRE(congested.stats.expanded_nodes > 0);
 }
 
 TEST_CASE("Router loads from JSON configuration", "[router]") {
@@ -54,9 +56,10 @@ TEST_CASE("Router loads from JSON configuration", "[router]") {
     auto router = georoute::Router::from_json(json);
     const auto route = router.compute_route(0, 3);
 
-    REQUIRE(route.reachable);
-    REQUIRE(route.total_travel_time == Catch::Approx(2.0F));
-    REQUIRE(route.nodes == std::vector<georoute::node_id>{0, 1, 3});
+    REQUIRE(route.result.reachable);
+    REQUIRE(route.result.total_travel_time == Catch::Approx(2.0F));
+    REQUIRE(route.result.nodes == std::vector<georoute::node_id>{0, 1, 3});
+    REQUIRE(route.stats.expanded_nodes > 0);
 }
 
 
